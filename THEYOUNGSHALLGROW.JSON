@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TheYoungShallGrow Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#070b18;
+      --panel:rgba(255,255,255,.04);
+      --panel2:rgba(255,255,255,.03);
+      --border:rgba(255,255,255,.10);
+      --text:#eaf0ff;
+      --muted:rgba(234,240,255,.65);
+      --accent:#7dd3fc;
+      --accent2:#a78bfa;
+      --shadow: 0 18px 45px rgba(0,0,0,.55);
+      --shadow2: 0 10px 24px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 800px at 15% 10%, rgba(125,211,252,.22), transparent 55%),
+        radial-gradient(900px 700px at 85% 25%, rgba(167,139,250,.18), transparent 60%),
+        radial-gradient(1200px 900px at 45% 95%, rgba(52,211,153,.10), transparent 55%),
+        linear-gradient(180deg, #060815, #070b18 45%, #070b18);
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    /* LOCK SCREEN */
+    #locked{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:22px}
+    .lockBox{
+      width:min(440px,100%);
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+    .lockGrid{display:grid;grid-template-columns:1fr;gap:10px}
+    input,select,textarea{
+      width:100%;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      outline:none;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+    textarea{min-height:96px;resize:vertical}
+    input::placeholder,textarea::placeholder{color:rgba(234,240,255,.55)}
+    .btn{
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:
+        linear-gradient(135deg, rgba(125,211,252,.22), rgba(167,139,250,.18)),
+        rgba(255,255,255,.03);
+      color:var(--text);
+      cursor:pointer;
+      box-shadow:var(--shadow2);
+      transition: transform .10s ease, filter .10s ease;
+    }
+    .btn:hover{filter:brightness(1.08)}
+    .btn:active{transform: translateY(1px)}
+    .btn.ghost{
+      background:rgba(255,255,255,.03);
+      box-shadow:none;
+    }
+
+    /* APP LAYOUT */
+    .wrap{display:flex;min-height:100vh}
+    .sidebar{
+      width:330px;
+      padding:16px;
+      border-right:1px solid var(--border);
+      background:rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
+    }
+    .main{flex:1;padding:18px}
+    .brand{
+      font-weight:900;
+      font-size:18px;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow:0 0 22px rgba(125,211,252,.35);
+    }
+    .sub{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.4}
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:14px;
+      margin-top:14px;
+      box-shadow:var(--shadow2);
+      backdrop-filter: blur(12px);
+    }
+    .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .pill{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.18);
+      font-size:12px;
+      color:rgba(234,240,255,.85);
+    }
+    .nav{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+    .nav button{
+      width:100%;
+      text-align:left;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.02);
+      color:var(--text);
+      cursor:pointer;
+      transition: filter .1s ease;
+    }
+    .nav button:hover{filter:brightness(1.08)}
+    .nav button.active{
+      border-color:rgba(125,211,252,.45);
+      box-shadow:0 0 0 1px rgba(125,211,252,.22) inset;
+      background:rgba(125,211,252,.06);
+    }
+
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .title{font-size:18px;font-weight:900}
+    .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .val{font-size:22px;font-weight:900;margin-top:6px}
+    .section{display:none}
+    .section.active{display:block}
+
+    label{display:block;color:var(--muted);font-size:12px;margin-top:10px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12px;vertical-align:top}
+    th{color:var(--muted);font-weight:800}
+    .err{color:#fecaca;white-space:pre-wrap;font-size:12px;margin-top:10px;display:none}
+
+    #toast{
+      position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.12);
+      color:rgba(234,240,255,.92);
+      padding:10px 14px;
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      display:none;
+      z-index:9999;
+      max-width:min(520px,92vw);
+      font-size:13px;
+    }
+
+    @media (max-width:1100px){
+      .grid4{grid-template-columns:1fr 1fr}
+      .grid2{grid-template-columns:1fr}
+      .sidebar{width:100%;max-width:360px}
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="locked">
+  <div class="lockBox">
+    <div class="lockGrid">
+      <input id="email" placeholder="Admin email" autocomplete="username" />
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="btn" onclick="signIn()">Sign in</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="wrap" style="display:none;">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot"></span> Njangi Admin</div>
+    <div class="sub">Today • <span id="today"></span></div>
+
+    <div class="card">
+      <div class="row"><span class="sub">Signed in</span><span class="pill" id="who">—</span></div>
+      <div class="row" style="margin-top:10px;"><span class="sub">Role</span><span class="pill" id="role">—</span></div>
+      <button class="btn ghost" style="width:100%;margin-top:10px" onclick="signOut()">Logout</button>
+      <div id="sideErr" class="err"></div>
+    </div>
+
+    <div class="nav">
+      <button id="navDash" class="active" onclick="show('dash','Dashboard')">Dashboard</button>
+      <button id="navMembers" onclick="show('members','Members')">Members</button>
+      <button id="navContrib" onclick="show('contrib','Contributions')">Contributions</button>
+      <button id="navFoundation" onclick="show('foundation','Foundation')">Foundation</button>
+      <button id="navLoans" onclick="show('loans','Loans')">Loans</button>
+      <button id="navFines" onclick="show('fines','Fines')">Fines</button>
+      <button id="navPayouts" onclick="show('payouts','Payouts')">Payouts</button>
+      <button id="navHistory" onclick="show('history','History')">History</button>
+
+      <!-- NEW -->
+      <button id="navFPayments" onclick="show('foundation_payments','Foundation Payments')">Foundation Payments</button>
+      <button id="navSureties" onclick="show('sureties','Sureties')">Sureties</button>
+
+      <button class="btn ghost" style="margin-top:6px" onclick="reloadAll()">Refresh</button>
+    </div>
+
+    <div class="card">
+      <div class="sub"><b>Rotation</b></div>
+      <div style="margin-top:8px;font-weight:900;font-size:18px" id="nextName">—</div>
+      <div class="sub" id="nextInfo">—</div>
+      <button class="btn" style="width:100%;margin-top:10px" onclick="runPayout()">Run Payout</button>
+      <div class="sub" style="margin-top:10px;color:#fbbf24">Start: <b>Jan 3, 2026</b> • Every 14 days</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title" id="pageTitle">Dashboard</div>
+      <span class="pill">Total Interest: <b id="kInterestMini">$0</b></span>
+    </div>
+
+    <section id="dash" class="section active">
+      <div class="grid4">
+        <div class="card kpi"><div class="label">Njangi Pot</div><div class="val" id="kPot">$0</div><div class="sub">Sum of contributions</div></div>
+        <div class="card kpi"><div class="label">Foundation</div><div class="val" id="kFoundation">$0</div><div class="sub">Available for loans</div></div>
+        <div class="card kpi"><div class="label">Outstanding Loans</div><div class="val" id="kLoans">$0</div><div class="sub">Total due</div></div>
+        <div class="card kpi"><div class="label">Members</div><div class="val" id="kMembers">0</div><div class="sub">Rotation list</div></div>
+      </div>
+
+      <div class="grid2" style="margin-top:12px;">
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Histogram: Contributions (Top 10)</div><span class="pill">Now</span></div>
+          <canvas id="histChart" height="140"></canvas>
+        </div>
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Pie: Pot vs Foundation vs Loans</div><span class="pill">Now</span></div>
+          <canvas id="pieChart" height="140"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="row"><div style="font-weight:900;">Recent Activity</div><span class="pill">Top 15</span></div>
+        <table>
+          <thead><tr><th>Time</th><th>Type</th><th>Member</th><th>Amount</th><th>Interest %</th><th>Total Due</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="members" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Add Member</div>
+          <label>Name</label><input id="mName" placeholder="e.g. John Doe" />
+          <label>Phone (optional)</label><input id="mPhone" placeholder="e.g. 301-000-0000" />
+          <label>Has benefits?</label>
+          <select id="mBenefits"><option value="false">No</option><option value="true">Yes</option></select>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addMember()">Add Member</button>
+        </div>
+
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Member List</div><span class="pill">Total: <span id="memberCount">0</span></span></div>
+          <table>
+            <thead><tr><th>Name</th><th>Njangi</th><th>Foundation</th><th>Loan Due</th><th>Payout Total</th><th>Benefits</th></tr></thead>
+            <tbody id="memberBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="contrib" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Add Contribution</div>
+          <label>Member</label><select id="cMember"></select>
+          <label>Amount (multiple of 500)</label><input id="cAmount" type="number" placeholder="e.g. 500" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addContribution()">Save Contribution</button>
+          <div class="sub" style="margin-top:12px">Rule: Contributions must be multiples of <b>500</b>.</div>
+        </div>
+        <div class="card">
+          <div style="font-weight:900;">Set Contribution Total</div>
+          <label>Member</label><select id="cSetMember"></select>
+          <label>Set to amount</label><input id="cSetAmount" type="number" placeholder="e.g. 2000" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="setContribution()">Set Contribution</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="foundation" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Foundation Balance</div>
+          <label>Add to Foundation</label><input id="fAmount" type="number" placeholder="e.g. 500" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addToFoundation()">Add</button>
+          <hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:14px 0;">
+          <label>Set Foundation Total</label><input id="fSetAmount" type="number" placeholder="e.g. 5000" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="setFoundation()">Set Foundation</button>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:900;">Member Foundation Contribution</div>
+          <label>Member</label><select id="mfMember"></select>
+          <label>Amount</label><input id="mfAmount" type="number" placeholder="e.g. 500" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addMemberFoundation()">Add Member Foundation</button>
+          <div class="sub" style="margin-top:12px">This increases member foundation and foundation balance.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="loans" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Issue Loan (5%)</div>
+          <label>Member</label><select id="lMember"></select>
+          <label>Loan amount</label><input id="lAmount" type="number" placeholder="e.g. 1000" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="issueLoan()">Issue Loan</button>
+          <div class="sub" style="margin-top:12px">
+            Rule: if benefits = Yes and foundation contrib ≤ 70% of loan → not qualified.
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:900;">Record Repayment</div>
+          <label>Member</label><select id="rMember"></select>
+          <label>Repayment amount</label><input id="rAmount" type="number" placeholder="e.g. 500" />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="repayLoan()">Save Repayment</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="fines" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Add Fine</div>
+          <label>Member</label><select id="fineMember"></select>
+          <label>Fine amount</label><input id="fineAmount" type="number" placeholder="e.g. 500" />
+          <label>Reason</label><input id="fineReason" placeholder="Late payment..." />
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addFine()">Save Fine</button>
+        </div>
+
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Fines</div><span class="pill">Newest first</span></div>
+          <table>
+            <thead><tr><th>Date</th><th>Member</th><th>Amount</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="fineBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="payouts" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Run Payout</div>
+          <div class="sub" style="margin-top:6px;">Start: Jan 3, 2026 • Every 14 days</div>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="runPayout()">Run Now</button>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:900;">Payout History</div>
+          <table>
+            <thead><tr><th>Date</th><th>Member</th><th>Amount</th></tr></thead>
+            <tbody id="payoutBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="history" class="section">
+      <div class="card">
+        <div class="row"><div style="font-weight:900;">Full History</div><span class="pill">Latest first</span></div>
+        <table>
+          <thead><tr><th>Time</th><th>Type</th><th>Member</th><th>Amount</th><th>Interest %</th><th>Total Due</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- NEW: FOUNDATION PAYMENTS -->
+    <section id="foundation_payments" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Add Foundation Payment</div>
+          <label>Member</label><select id="fpMember"></select>
+          <label>Amount Paid</label><input id="fpPaid" type="number" placeholder="e.g. 500" />
+          <label>Amount Pending</label><input id="fpPending" type="number" placeholder="e.g. 1500" />
+          <label>Status</label>
+          <select id="fpStatus">
+            <option value="pending">pending</option>
+            <option value="partial">partial</option>
+            <option value="paid">paid</option>
+          </select>
+          <label>Notes (optional)</label><textarea id="fpNotes" placeholder="Notes..."></textarea>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addFoundationPayment()">Save</button>
+          <div class="sub" style="margin-top:10px">DatePaid is auto (now()).</div>
+        </div>
+
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Foundation Payments</div><span class="pill">Newest first</span></div>
+          <table>
+            <thead><tr><th>Date</th><th>Member</th><th>Paid</th><th>Pending</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody id="fpBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW: SURETIES -->
+    <section id="sureties" class="section">
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:900;">Add Surety Record</div>
+          <label>Surety Name</label><input id="sSuretyName" placeholder="Surety full name" />
+          <label>Borrower (select member)</label><select id="sBorrowerMember"></select>
+          <label>Amount Borrowed</label><input id="sAmountBorrowed" type="number" placeholder="e.g. 1000" />
+          <label>Surety Sign (text)</label><input id="sSuretySign" placeholder="Surety signature text" />
+          <label>Borrower Sign (text)</label><input id="sBorrowerSign" placeholder="Borrower signature text" />
+          <label>Status</label>
+          <select id="sStatus">
+            <option value="active">active</option>
+            <option value="cleared">cleared</option>
+            <option value="defaulted">defaulted</option>
+          </select>
+          <label>Notes (optional)</label><textarea id="sNotes" placeholder="Notes..."></textarea>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="addSurety()">Save</button>
+          <div class="sub" style="margin-top:10px">DateBorrowed is auto (now()).</div>
+        </div>
+
+        <div class="card">
+          <div class="row"><div style="font-weight:900;">Sureties</div><span class="pill">Newest first</span></div>
+          <table>
+            <thead><tr><th>Date</th><th>Surety</th><th>Borrower</th><th>Amount</th><th>Status</th><th>Surety Sign</th><th>Borrower Sign</th></tr></thead>
+            <tbody id="sBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ===========================
+   SUPABASE CONFIG
+=========================== */
+const SUPABASE_URL = "https://ficlrtvrrzfiakmciwel.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpY2xydHZycnpmaWFrbWNpd2VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMjk0MDQsImV4cCI6MjA4MjcwNTQwNH0.xWuH_-amYd_24R8PURbZXMUDjz--Q9R_RASOdGzsZJI";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===========================
+   CONSTANTS
+=========================== */
+const ROTATION_START = new Date("2026-01-03T00:00:00");
+const BIWEEK_MS = 14 * 24 * 60 * 60 * 1000;
+const INTEREST_RATE = 0.05;
+
+/* ===========================
+   STATE
+=========================== */
+let appState = { foundation:0, total_interest_generated:0, next_payout_index:0, next_payout_date:"2026-01-03" };
+let members = [];
+let history = [];
+let payouts = [];
+let fines = [];
+let foundationPayments = [];
+let sureties = [];
+let loans = [];
+let latestSession = null;
+let foundationPaidTotal = 0;
+let histChart = null;
+let pieChart = null;
+
+/* ===========================
+   HELPERS
+=========================== */
+const money = (x) => "$" + (Number(x)||0).toLocaleString();
+const isoDate = (d) => {
+  const z = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return z.toISOString().slice(0,10);
+};
+const fromIso = (s) => new Date(s + "T00:00:00");
+
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.style.display = "none"; }, 2800);
+}
+function sideErr(msg){
+  const el = document.getElementById("sideErr");
+  el.style.display = msg ? "block" : "none";
+  el.textContent = msg || "";
+}
+function appendErr(msg){
+  const el = document.getElementById("sideErr");
+  const current = el.textContent || "";
+  const next = current ? (current + "\n" + msg) : msg;
+  el.style.display = "block";
+  el.textContent = next;
+}
+function show(sectionId, title){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(sectionId).classList.add("active");
+  document.getElementById("pageTitle").textContent = title;
+
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+  const map = {
+    dash:"navDash",
+    members:"navMembers",
+    contrib:"navContrib",
+    foundation:"navFoundation",
+    loans:"navLoans",
+    fines:"navFines",
+    payouts:"navPayouts",
+    history:"navHistory",
+    foundation_payments:"navFPayments",
+    sureties:"navSureties"
+  };
+  document.getElementById(map[sectionId])?.classList.add("active");
+}
+
+/* show JS runtime errors */
+window.addEventListener("error", (e) => appendErr("JS error: " + (e?.message || "unknown")));
+window.addEventListener("unhandledrejection", (e) => appendErr("Promise error: " + (e?.reason?.message || String(e?.reason || "unknown"))));
+
+/* ===========================
+   AUTH / ADMIN GATE
+=========================== */
+async function enforceAdminGate(){
+  const { data } = await sb.auth.getUser();
+  const user = data?.user;
+
+  if(!user){
+    document.getElementById("app").style.display = "none";
+    document.getElementById("locked").style.display = "flex";
+    return false;
+  }
+
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if(error){
+    sideErr("profiles: " + error.message);
+    await sb.auth.signOut();
+    document.getElementById("app").style.display = "none";
+    document.getElementById("locked").style.display = "flex";
+    return false;
+  }
+
+  if(!profile){
+    sideErr("profiles: no row for this user (create a profiles row + role='admin').");
+    await sb.auth.signOut();
+    document.getElementById("app").style.display = "none";
+    document.getElementById("locked").style.display = "flex";
+    return false;
+  }
+
+  if(profile.role !== "admin"){
+    sideErr("Access denied: role is not admin.");
+    await sb.auth.signOut();
+    document.getElementById("app").style.display = "none";
+    document.getElementById("locked").style.display = "flex";
+    return false;
+  }
+
+  document.getElementById("locked").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("who").textContent = user.email || "admin";
+  document.getElementById("role").textContent = "admin";
+  document.getElementById("today").textContent = new Date().toLocaleDateString();
+  return true;
+}
+
+async function signIn(){
+  sideErr("");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  if (!email || !password) return toast("Enter email and password");
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return toast(error.message);
+
+  const ok = await enforceAdminGate();
+  if (!ok) return toast("Access denied: admin only");
+
+  await reloadAll();
+  toast("Welcome");
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  document.getElementById("app").style.display = "none";
+  document.getElementById("locked").style.display = "flex";
+}
+
+/* ===========================
+   LOAD (FIX app_state single() crash)  ✅ (your requested part)
+=========================== */
+async function reloadAll(){
+  sideErr("");
+
+  // FIX: maybeSingle + auto-seed app_state row
+  let a = await sb.from("app_state").select("*").eq("id", 1).maybeSingle();
+
+  if (a.error) {
+    appendErr("app_state: " + a.error.message);
+    appState = { foundation:0, total_interest_generated:0, next_payout_index:0, next_payout_date:"2026-01-03" };
+  } else if (!a.data) {
+    const seed = {
+      id: 1,
+      foundation: 0,
+      next_payout_index: 0,
+      rotation_start_date: "2026-01-03",
+      next_payout_date: "2026-01-03",
+      total_interest_generated: 0,
+      updated_at: new Date().toISOString()
+    };
+
+    const ins = await sb.from("app_state").insert([seed]).select().single();
+    if (ins.error) {
+      appendErr("app_state init: " + ins.error.message);
+      appState = { foundation:0, total_interest_generated:0, next_payout_index:0, next_payout_date:"2026-01-03" };
+    } else {
+      appState = ins.data;
+    }
+  } else {
+    appState = a.data;
+  }
+
+  const m = await sb.from("members").select("*").order("position", { ascending: true });
+  if (m.error) appendErr("members: " + m.error.message);
+  members = m.data || [];
+
+  const h = await sb.from("history").select("*").order("created_at", { ascending: false }).limit(500);
+  if (h.error) appendErr("history: " + h.error.message);
+  history = h.data || [];
+
+  const p = await sb.from("payouts").select("*").order("created_at", { ascending: false }).limit(200);
+  if (p.error) appendErr("payouts: " + p.error.message);
+  payouts = p.data || [];
+
+  const f = await sb.from("fines").select("*").order("created_at", { ascending: false }).limit(200);
+  if (f.error) appendErr("fines: " + f.error.message);
+  fines = f.data || [];
+
+  // NEW TABLES (won't break if not created; errors show in sidebar)
+  const fp = await sb.from("foundation_payments").select("*").order("date_paid", { ascending: false }).limit(300);
+  if (fp.error) appendErr("foundation_payments: " + fp.error.message);
+  foundationPayments = fp.data || [];
+
+  // Foundation KPI now comes from sum(amount_paid) in foundation_payments
+  foundationPaidTotal = (foundationPayments || []).reduce((s, r) => s + (Number(r.amount_paid) || 0), 0);
+
+  const s = await sb.from("sureties").select("*").order("date_borrowed", { ascending: false }).limit(300);
+  if (s.error) appendErr("sureties: " + s.error.message);
+  sureties = s.data || [];
+
+  // Sessions (used for auto-converting amount_pending -> loans after 15 days)
+  const sess = await sb.from("sessions").select("*").order("start_date", { ascending: false }).limit(1).maybeSingle();
+  if (sess.error) appendErr("sessions: " + sess.error.message);
+  latestSession = sess.data || null;
+
+  // Loans table (optional; used by auto-conversion logic)
+  const ln = await sb.from("loans").select("*").order("created_at", { ascending: false }).limit(500);
+  if (ln.error) appendErr("loans: " + ln.error.message);
+  loans = ln.data || [];
+
+  // Auto convert foundation_payments.amount_pending into loans.principal after 15 days from latest sessions.start_date
+  const changed = await autoConvertPendingToLoans();
+  if (changed && !reloadAll._autoRetry) {
+    reloadAll._autoRetry = true;
+    await reloadAll();
+    reloadAll._autoRetry = false;
+    return;
+  }
+
+  renderAll();
+
+  if(members.length===0 && history.length===0 && payouts.length===0 && fines.length===0){
+    appendErr("Note: If you EXPECT data but see 0 rows, RLS policies may be blocking SELECT for this user.");
+  }
+}
+
+/* ===========================
+   RENDER
+=========================== */
+function renderAll(){
+  const pot = members.reduce((s,x)=>s+(Number(x.contributed)||0),0);
+  const outstanding = members.reduce((s,x)=>s+(Number(x.loan_due)||0),0);
+
+  document.getElementById("kPot").textContent = money(pot);
+  document.getElementById("kFoundation").textContent = money(foundationPaidTotal||0);
+  document.getElementById("kLoans").textContent = money(outstanding);
+  document.getElementById("kMembers").textContent = String(members.length);
+  document.getElementById("kInterestMini").textContent = money(appState.total_interest_generated||0);
+
+  const idx = Number(appState.next_payout_index||0);
+  const nextDate = appState.next_payout_date ? fromIso(appState.next_payout_date) : ROTATION_START;
+  const nextMember = members.length ? members[idx % members.length] : null;
+
+  document.getElementById("nextName").textContent = nextMember ? nextMember.name : "No members";
+  document.getElementById("nextInfo").textContent = members.length
+    ? `Next payout: ${nextDate.toLocaleDateString()} • Position ${(idx%members.length)+1}/${members.length} • Payout: ${money(pot)}`
+    : "Add members to start rotation";
+
+  document.getElementById("memberCount").textContent = String(members.length);
+  document.getElementById("memberBody").innerHTML = members
+    .slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+    .map(x=>`
+      <tr>
+        <td>${x.name||""}</td>
+        <td>${money(x.contributed||0)}</td>
+        <td>${money(x.foundation_contrib||0)}</td>
+        <td>${money(x.loan_due||0)}</td>
+        <td>${money(x.payout_total||0)}</td>
+        <td>${x.has_benefits ? "Yes":"No"}</td>
+      </tr>
+    `).join("");
+
+  const opts = members.map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
+  ["cMember","cSetMember","mfMember","lMember","rMember","fineMember","fpMember","sBorrowerMember"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.innerHTML=opts;
+  });
+
+  const recent = history.slice(0,15);
+  document.getElementById("recentBody").innerHTML = recent.map(x=>{
+    const t=x.created_at?new Date(x.created_at).toLocaleString():"";
+    return `<tr><td>${t}</td><td>${x.type||""}</td><td>${x.member||""}</td><td>${money(x.amount||0)}</td><td>${x.interest_percent?Number(x.interest_percent)+"%":"-"}</td><td>${x.total_due!=null?money(x.total_due):"-"}</td></tr>`;
+  }).join("");
+
+  document.getElementById("historyBody").innerHTML = history.map(x=>{
+    const t=x.created_at?new Date(x.created_at).toLocaleString():"";
+    return `<tr><td>${t}</td><td>${x.type||""}</td><td>${x.member||""}</td><td>${money(x.amount||0)}</td><td>${x.interest_percent?Number(x.interest_percent)+"%":"-"}</td><td>${x.total_due!=null?money(x.total_due):"-"}</td></tr>`;
+  }).join("");
+
+  document.getElementById("payoutBody").innerHTML = payouts.map(x=>`
+    <tr><td>${x.payout_date||""}</td><td>${x.member_name||""}</td><td>${money(x.payout_amount||0)}</td></tr>
+  `).join("");
+
+  document.getElementById("fineBody").innerHTML = fines.map(x=>{
+    const t=x.created_at?new Date(x.created_at).toLocaleString():"";
+    const action = (x.status||"unpaid")==="unpaid"
+      ? `<button class="btn ghost" onclick="markFinePaid(${x.id})">Mark Paid</button>`
+      : "-";
+    return `<tr><td>${t}</td><td>${x.member_name||""}</td><td>${money(x.amount||0)}</td><td>${x.reason||"-"}</td><td>${x.status||"unpaid"}</td><td>${action}</td></tr>`;
+  }).join("");
+
+  // NEW: foundation payments table render
+  const membersById = Object.fromEntries(members.map(m => [String(m.id), m]));
+  document.getElementById("fpBody").innerHTML = (foundationPayments || []).map(r=>{
+    const t = r.date_paid ? new Date(r.date_paid).toLocaleString() : "";
+    const m = membersById[String(r.member_id)];
+    return `<tr>
+      <td>${t}</td>
+      <td>${m ? m.name : (r.member_id ?? "")}</td>
+      <td>${money(r.amount_paid||0)}</td>
+      <td>${money(r.amount_pending||0)}</td>
+      <td>${r.status||""}</td>
+      <td>${(r.notes||"")}</td>
+    </tr>`;
+  }).join("");
+
+  // NEW: sureties render
+  document.getElementById("sBody").innerHTML = (sureties || []).map(r=>{
+    const t = r.date_borrowed ? new Date(r.date_borrowed).toLocaleString() : "";
+    const borrower = r.borrower_name || (membersById[String(r.borrower_member_id)]?.name) || "";
+    return `<tr>
+      <td>${t}</td>
+      <td>${r.surety_name||""}</td>
+      <td>${borrower}</td>
+      <td>${money(r.amount_borrowed||0)}</td>
+      <td>${r.status||""}</td>
+      <td>${r.surety_sign||""}</td>
+      <td>${r.borrower_sign||""}</td>
+    </tr>`;
+  }).join("");
+
+  renderCharts();
+}
+
+function renderCharts(){
+  if(typeof Chart === "undefined"){
+    appendErr("Chart.js not loaded. Charts disabled.");
+    return;
+  }
+
+  const top = members
+    .map(m => ({ name: m.name || "Member", v: Number(m.contributed || 0) }))
+    .sort((a,b)=>b.v-a.v)
+    .slice(0,10);
+
+  const hctx = document.getElementById("histChart").getContext("2d");
+  if(histChart) histChart.destroy();
+  histChart = new Chart(hctx,{
+    type:"bar",
+    data:{ labels: top.map(x=>x.name), datasets:[{ label:"Contributions", data: top.map(x=>x.v) }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ ticks:{color:"rgba(234,240,255,.7)"}, grid:{color:"rgba(255,255,255,.06)"} },
+        y:{ ticks:{color:"rgba(234,240,255,.7)"}, grid:{color:"rgba(255,255,255,.06)"} }
+      }
+    }
+  });
+
+  const pot = members.reduce((s,x)=>s+(Number(x.contributed)||0),0);
+  const loans = members.reduce((s,x)=>s+(Number(x.loan_due)||0),0);
+  const foundation = Number(foundationPaidTotal||0);
+
+  const pctx = document.getElementById("pieChart").getContext("2d");
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(pctx,{
+    type:"pie",
+    data:{ labels:["Pot","Foundation","Loans Due"], datasets:[{ data:[pot, foundation, loans] }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ position:"bottom", labels:{ color:"rgba(234,240,255,.75)" } } }
+    }
+  });
+}
+
+/* ===========================
+   WRITES
+=========================== */
+async function addHistoryRow(type, member, amount, interestPercent=0, totalDue=null){
+  await sb.from("history").insert([{ type, member, amount, interest_percent:interestPercent, total_due:totalDue }]);
+}
+
+
+/* ===========================
+   AUTO: Convert amount_pending -> loans after 15 days
+   - Reads latest sessions.start_date
+   - For each foundation_payments row with amount_pending > 0:
+       * insert into loans (member_id, principal)
+       * update members.loan_due (+principal) so UI KPIs still work
+       * update foundation_payments.amount_pending -> 0 and status -> 'loaned' (best-effort)
+=========================== */
+async function autoConvertPendingToLoans(){
+  try{
+    if(!latestSession || !latestSession.start_date) return false;
+
+    // sessions.start_date assumed to be a DATE (YYYY-MM-DD) or timestamp; take date part
+    const sd = String(latestSession.start_date).slice(0,10);
+    const start = fromIso(sd);
+    const threshold = new Date(start.getTime() + (15 * 24 * 60 * 60 * 1000));
+
+    const today = fromIso(isoDate(new Date()));
+    if(today < threshold) return false;
+
+    // Pull pending amounts
+    const pend = await sb
+      .from("foundation_payments")
+      .select("id, member_id, amount_pending, status, notes")
+      .gt("amount_pending", 0);
+
+    if(pend.error){
+      appendErr("auto-loan foundation_payments: " + pend.error.message);
+      return false;
+    }
+
+    const rows = (pend.data || []).filter(r => r.member_id != null && Number(r.amount_pending || 0) > 0);
+    if(!rows.length) return false;
+
+    let changed = false;
+
+    for(const r of rows){
+      const principal = Number(r.amount_pending || 0);
+      const memberId = Number(r.member_id);
+
+      // 1) insert into loans table (minimum required fields)
+      const ins = await sb.from("loans").insert([{ member_id: memberId, principal }]);
+      if(ins.error){
+        appendErr("auto-loan loans insert: " + ins.error.message);
+        continue; // don't convert this row if loan insert failed
+      }
+
+      // 2) update members.loan_due so existing dashboard stays intact
+      const mem = members.find(x => String(x.id) === String(memberId));
+      if(mem){
+        const newDue = (Number(mem.loan_due) || 0) + principal;
+        const mu = await sb.from("members").update({ loan_due: newDue }).eq("id", memberId);
+        if(mu.error) appendErr("auto-loan members update: " + mu.error.message);
+      }
+
+      // 3) mark foundation_payment row as converted (best-effort; works even if status enum differs)
+      const stamp = `Converted to loan on ${new Date().toISOString()} (session start: ${sd})`;
+      const newNotes = (r.notes ? (r.notes + " | ") : "") + stamp;
+
+      let fu = await sb.from("foundation_payments").update({
+        amount_pending: 0,
+        status: "loaned",
+        notes: newNotes
+      }).eq("id", r.id);
+
+      if(fu.error){
+        // fallback #1: no status update
+        fu = await sb.from("foundation_payments").update({
+          amount_pending: 0,
+          notes: newNotes
+        }).eq("id", r.id);
+
+        if(fu.error){
+          // fallback #2: only clear pending
+          fu = await sb.from("foundation_payments").update({
+            amount_pending: 0
+          }).eq("id", r.id);
+
+          if(fu.error) appendErr("auto-loan foundation_payments update: " + fu.error.message);
+        }
+      }
+
+      // 4) log history (optional)
+      const name = mem ? mem.name : `member_id=${memberId}`;
+      await addHistoryRow("Auto Loan (Pending)", name, principal, 0, null);
+
+      changed = true;
+    }
+
+    return changed;
+  } catch(e){
+    appendErr("auto-loan error: " + (e?.message || String(e)));
+    return false;
+  }
+}
+/* ADD MEMBER (FIX Math.max bug) ✅ */
+async function addMember(){
+  const name = document.getElementById("mName").value.trim();
+  const phone = document.getElementById("mPhone").value.trim();
+  const hasBenefits = document.getElementById("mBenefits").value === "true";
+  if(!name) return toast("Enter member name");
+
+  const pos = members.length ? (Math.max(...members.map(x => Number(x.position || 0))) + 1) : 1;
+
+  const r = await sb.from("members").insert([{ name, phone, has_benefits: hasBenefits, position: pos }]);
+  if (r.error) return toast(r.error.message);
+
+  await addHistoryRow("Member Added", name, 0, 0, null);
+  document.getElementById("mName").value = "";
+  document.getElementById("mPhone").value = "";
+  await reloadAll();
+  toast("Member added");
+}
+
+/* CONTRIBUTION (use RPC) ✅ with fallback */
+async function addContribution(){
+  const memberId = document.getElementById("cMember").value;
+  const amt = Number(document.getElementById("cAmount").value || 0);
+  if(!memberId) return toast("Select member");
+  if(!amt || amt <= 0) return toast("Enter amount");
+  if(amt % 500 !== 0) return toast("Must be multiple of 500");
+
+  // Try RPC first
+  const r = await sb.rpc("add_contribution", {
+    p_member_id: Number(memberId),
+    p_amount: amt
+  });
+
+  if (r.error) {
+    // fallback to direct update (won't break your app if RPC isn't created)
+    appendErr("add_contribution RPC failed (fallback used): " + r.error.message);
+
+    const m = members.find(x => String(x.id) === String(memberId));
+    if(!m) return toast("Member not found");
+    const newTotal = (Number(m.contributed)||0) + amt;
+
+    const u = await sb.from("members").update({ contributed: newTotal }).eq("id", memberId);
+    if (u.error) return toast(u.error.message);
+
+    await addHistoryRow("Contribution", m.name, amt, 0, newTotal);
+  }
+
+  document.getElementById("cAmount").value = "";
+  await reloadAll();
+  toast("Saved");
+}
+
+/* PAYOUT (use RPC) ✅ with fallback */
+async function runPayout(){
+  // Try RPC
+  const r = await sb.rpc("run_payout");
+  if (!r.error && r.data) {
+    await reloadAll();
+    toast(`Paid ${money(r.data.payout_amount)} to ${r.data.receiver_name}`);
+    return;
+  }
+
+  // Fallback to local payout logic
+  if (r.error) appendErr("run_payout RPC failed (fallback used): " + r.error.message);
+
+  if(!members.length) return toast("No members");
+  const pot = members.reduce((s,x)=>s+(Number(x.contributed)||0),0);
+  if(pot<=0) return toast("Pot is 0");
+
+  const idx = Number(appState.next_payout_index||0) % members.length;
+  const nextDate = appState.next_payout_date ? fromIso(appState.next_payout_date) : ROTATION_START;
+
+  const today = fromIso(isoDate(new Date()));
+  if(today < nextDate) return toast("Next payout: " + nextDate.toLocaleDateString());
+
+  const receiver = members[idx];
+
+  let ins = await sb.from("payouts").insert([{ member_id:receiver.id, member_name:receiver.name, payout_amount:pot, payout_date:isoDate(today) }]);
+  if(ins.error) return toast(ins.error.message);
+
+  let up = await sb.from("members").update({ payout_total:(Number(receiver.payout_total)||0)+pot, last_payout_at:new Date().toISOString() }).eq("id",receiver.id);
+  if(up.error) return toast(up.error.message);
+
+  let reset = await sb.from("members").update({contributed:0});
+  if(reset.error) return toast(reset.error.message);
+
+  const newIdx=(idx+1)%members.length;
+  const newNextDate=new Date(nextDate.getTime()+BIWEEK_MS);
+
+  let st = await sb.from("app_state").update({ next_payout_index:newIdx, next_payout_date:isoDate(newNextDate), updated_at:new Date().toISOString() }).eq("id",1);
+  if(st.error) return toast(st.error.message);
+
+  await addHistoryRow("Payout",receiver.name,pot,0,null);
+  await reloadAll();
+  toast(`Paid ${money(pot)} to ${receiver.name}`);
+}
+
+async function setContribution(){
+  const memberId=document.getElementById("cSetMember").value;
+  const amt=Number(document.getElementById("cSetAmount").value||0);
+  if(!memberId) return toast("Select member");
+  if(amt<0) return toast("Invalid amount");
+  const m=members.find(x=>String(x.id)===String(memberId));
+  const r=await sb.from("members").update({contributed:amt}).eq("id",memberId);
+  if(r.error) return toast(r.error.message);
+  await addHistoryRow("Set Contribution", m.name, amt, 0, amt);
+  document.getElementById("cSetAmount").value="";
+  await reloadAll(); toast("Updated");
+}
+
+async function addToFoundation(){
+  const amt=Number(document.getElementById("fAmount").value||0);
+  if(!amt||amt<=0) return toast("Enter amount");
+  const newFound=(Number(appState.foundation)||0)+amt;
+  const r=await sb.from("app_state").update({foundation:newFound,updated_at:new Date().toISOString()}).eq("id",1);
+  if(r.error) return toast(r.error.message);
+  await addHistoryRow("Foundation Add","Admin",amt,0,newFound);
+  document.getElementById("fAmount").value="";
+  await reloadAll(); toast("Saved");
+}
+
+async function setFoundation(){
+  const amt=Number(document.getElementById("fSetAmount").value||0);
+  if(amt<0) return toast("Invalid amount");
+  const r=await sb.from("app_state").update({foundation:amt,updated_at:new Date().toISOString()}).eq("id",1);
+  if(r.error) return toast(r.error.message);
+  await addHistoryRow("Foundation Set","Admin",amt,0,amt);
+  document.getElementById("fSetAmount").value="";
+  await reloadAll(); toast("Updated");
+}
+
+async function addMemberFoundation(){
+  const memberId=document.getElementById("mfMember").value;
+  const amt=Number(document.getElementById("mfAmount").value||0);
+  if(!memberId) return toast("Select member");
+  if(!amt||amt<=0) return toast("Enter amount");
+
+  const m=members.find(x=>String(x.id)===String(memberId));
+  const newMemberFound=(Number(m.foundation_contrib)||0)+amt;
+
+  let r=await sb.from("members").update({foundation_contrib:newMemberFound}).eq("id",memberId);
+  if(r.error) return toast(r.error.message);
+
+  const newFound=(Number(appState.foundation)||0)+amt;
+  r=await sb.from("app_state").update({foundation:newFound,updated_at:new Date().toISOString()}).eq("id",1);
+  if(r.error) return toast(r.error.message);
+
+  await addHistoryRow("Member Foundation",m.name,amt,0,newMemberFound);
+  document.getElementById("mfAmount").value="";
+  await reloadAll(); toast("Saved");
+}
+
+async function issueLoan(){
+  const memberId=document.getElementById("lMember").value;
+  const amt=Number(document.getElementById("lAmount").value||0);
+  if(!memberId) return toast("Select member");
+  if(!amt||amt<=0) return toast("Enter loan amount");
+  const m=members.find(x=>String(x.id)===String(memberId));
+  const foundation=Number(appState.foundation||0);
+  if(amt>foundation) return toast("Loan exceeds foundation");
+
+  const minReq=0.70*amt;
+  const memberFound=Number(m.foundation_contrib||0);
+  if(m.has_benefits && memberFound<=minReq) return toast("Not qualified");
+
+  const interest=Math.round(amt*INTEREST_RATE);
+  const totalDue=amt+interest;
+
+  let r=await sb.from("members").update({loan_due:(Number(m.loan_due)||0)+totalDue}).eq("id",memberId);
+  if(r.error) return toast(r.error.message);
+
+  r=await sb.from("app_state").update({
+    foundation: foundation-amt,
+    total_interest_generated: (Number(appState.total_interest_generated)||0) + interest,
+    updated_at:new Date().toISOString()
+  }).eq("id",1);
+  if(r.error) return toast(r.error.message);
+
+  await addHistoryRow("Loan",m.name,amt,5,totalDue);
+  document.getElementById("lAmount").value="";
+  await reloadAll(); toast("Loan issued");
+}
+
+async function repayLoan(){
+  const memberId=document.getElementById("rMember").value;
+  const amt=Number(document.getElementById("rAmount").value||0);
+  if(!memberId) return toast("Select member");
+  if(!amt||amt<=0) return toast("Enter amount");
+
+  const m=members.find(x=>String(x.id)===String(memberId));
+  const due=Number(m.loan_due||0);
+  if(due<=0) return toast("No loan due");
+
+  const pay=Math.min(amt,due);
+  const newDue=due-pay;
+
+  let r=await sb.from("members").update({loan_due:newDue}).eq("id",memberId);
+  if(r.error) return toast(r.error.message);
+
+  r=await sb.from("app_state").update({
+    foundation:(Number(appState.foundation)||0)+pay,
+    updated_at:new Date().toISOString()
+  }).eq("id",1);
+  if(r.error) return toast(r.error.message);
+
+  await addHistoryRow("Repayment",m.name,pay,0,newDue);
+  document.getElementById("rAmount").value="";
+  await reloadAll(); toast("Repayment saved");
+}
+
+async function addFine(){
+  const memberId=document.getElementById("fineMember").value;
+  const amt=Number(document.getElementById("fineAmount").value||0);
+  const reason=document.getElementById("fineReason").value.trim();
+  if(!memberId) return toast("Select member");
+  if(!amt||amt<=0) return toast("Enter fine amount");
+
+  const m=members.find(x=>String(x.id)===String(memberId));
+  const r=await sb.from("fines").insert([{ member_id:m.id, member_name:m.name, amount:amt, reason, status:"unpaid" }]);
+  if(r.error) return toast(r.error.message);
+
+  await addHistoryRow("Fine",m.name,amt,0,null);
+  document.getElementById("fineAmount").value="";
+  document.getElementById("fineReason").value="";
+  await reloadAll(); toast("Fine saved");
+}
+
+async function markFinePaid(fineId){
+  const r=await sb.from("fines").update({status:"paid",paid_at:new Date().toISOString()}).eq("id",fineId);
+  if(r.error) return toast(r.error.message);
+  await reloadAll(); toast("Marked paid");
+}
+
+/* NEW: Foundation Payments insert */
+async function addFoundationPayment(){
+  const memberId = document.getElementById("fpMember").value;
+  const paid = Number(document.getElementById("fpPaid").value || 0);
+  const pending = Number(document.getElementById("fpPending").value || 0);
+  const status = document.getElementById("fpStatus").value;
+  const notes = document.getElementById("fpNotes").value.trim();
+
+  if(!memberId) return toast("Select member");
+  if(paid < 0 || pending < 0) return toast("Amounts must be >= 0");
+
+  const r = await sb.from("foundation_payments").insert([{
+    member_id: Number(memberId),
+    amount_paid: paid,
+    amount_pending: pending,
+    status,
+    notes
+  }]);
+
+  if(r.error) return toast(r.error.message);
+
+  document.getElementById("fpPaid").value = "";
+  document.getElementById("fpPending").value = "";
+  document.getElementById("fpNotes").value = "";
+  await reloadAll();
+  toast("Saved");
+}
+
+/* NEW: Surety insert */
+async function addSurety(){
+  const suretyName = document.getElementById("sSuretyName").value.trim();
+  const borrowerMemberId = document.getElementById("sBorrowerMember").value;
+  const amountBorrowed = Number(document.getElementById("sAmountBorrowed").value || 0);
+  const suretySign = document.getElementById("sSuretySign").value.trim();
+  const borrowerSign = document.getElementById("sBorrowerSign").value.trim();
+  const status = document.getElementById("sStatus").value;
+  const notes = document.getElementById("sNotes").value.trim();
+
+  if(!suretyName) return toast("Enter surety name");
+  if(!borrowerMemberId) return toast("Select borrower");
+  if(!amountBorrowed || amountBorrowed <= 0) return toast("Enter amount borrowed");
+
+  const borrower = members.find(m => String(m.id) === String(borrowerMemberId));
+  const borrowerName = borrower ? borrower.name : "Unknown";
+
+  const r = await sb.from("sureties").insert([{
+    surety_name: suretyName,
+    borrower_member_id: Number(borrowerMemberId),
+    borrower_name: borrowerName,
+    amount_borrowed: amountBorrowed,
+    surety_sign: suretySign || null,
+    borrower_sign: borrowerSign || null,
+    status,
+    notes: notes || null
+  }]);
+
+  if(r.error) return toast(r.error.message);
+
+  document.getElementById("sSuretyName").value = "";
+  document.getElementById("sAmountBorrowed").value = "";
+  document.getElementById("sSuretySign").value = "";
+  document.getElementById("sBorrowerSign").value = "";
+  document.getElementById("sNotes").value = "";
+  await reloadAll();
+  toast("Saved");
+}
+
+/* ===========================
+   INIT
+=========================== */
+(async function init(){
+  document.getElementById("app").style.display="none";
+  document.getElementById("locked").style.display="flex";
+  const ok = await enforceAdminGate();
+  if(ok) await reloadAll();
+})();
+</script>
+
+</body>
+</html>
