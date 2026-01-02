@@ -6,8 +6,8 @@ import altair as alt
 # ============================================================
 # CONFIG
 # ============================================================
-st.set_page_config(page_title="The Young Shall Grow – Njangi", layout="wide")
-st.title("🌱 The Young Shall Grow – Njangi")
+st.set_page_config(page_title="The Young Shall Grow: Progress", layout="wide")
+st.title("🌱 The Young Shall Grow: Progress")
 
 # ============================================================
 # SUPABASE SECRETS
